@@ -134,8 +134,10 @@ export default {
   },
   methods: {
     getCityData() {
+      let proxy = `https://cors-anywhere.herokuapp.com/`
+      let url = `https://works.ioa.tw/weather/api/all.json`
       axios
-        .get('https://works.ioa.tw/weather/api/all.json')
+        .get(`${proxy}${url}`)
         .then(response => {
           this.cityData = response.data.map(city => ({ label: `${city.name}, 台灣`, value: city.id }));
           this.selected = this.cityData[0];
@@ -147,8 +149,10 @@ export default {
     },
     getWeatherData(id) {
       this.loading = true;
+      let proxy = `https://cors-anywhere.herokuapp.com/`
+      let url = `https://works.ioa.tw/weather/api/weathers/${id}.json`
       axios
-        .get(`https://works.ioa.tw/weather/api/weathers/${id}.json`)
+        .get(`${proxy}${url}`)
         .then(response => {
           this.loading = false;
           this.weatherData = response.data;
