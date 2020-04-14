@@ -109,13 +109,14 @@ export default {
       contentNum: 20,
       pageLeng: 0,
       limitPage: 5,
-      pagination: ''
+      pagination: '',
+      time:null
     };
   },
   computed: {
     getTempChartData() {
       let result =  this.infectionCountryDataOri.filter((e,i)=>{
-        return i < 11;
+        return i < 10;
       });
       
       return result;
@@ -125,11 +126,15 @@ export default {
     // this.getCityData();
     this.getNovelCovid();
     this.getAllCountryNovelCovid();
+    this.time = setInterval(this.getNovelCovid, 60000);
   },
-  watch: {
-    selected() {
-      this.getWeatherData(this.selected.value);
-    }
+  mounted(){
+    this.$nextTick(()=>{
+      document.addEventListener('beforeunload', ()=>{
+        clearInterval(this.time)
+      });
+    })
+    
   },
   methods: {
     getNovelCovid() {
