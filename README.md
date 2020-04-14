@@ -1,3 +1,4 @@
+
 # d3-convid19
 
 ## Project setup
@@ -22,3 +23,6 @@ yarn lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+### preview
+![profile image](https://i.imgur.com/9HvFn0b.png)
