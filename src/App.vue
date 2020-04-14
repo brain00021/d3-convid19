@@ -1,45 +1,60 @@
-<template>
-  <div id="app">
-    <div class="main-container">
-      <v-select v-model="selected"
-                :options="cityData"
-                :clearable="false"
-                :searchable="false"
-                style="width: 201px;"></v-select>
-      <div style="margin-top: 28px;"
-           v-if="!loading">
-        <div class="row">
-          <LineChartBlock title="Temperature"
-                          color="#00BAB6"
-                          :icon="temp"
-                          :chartData="getTempChartData"
-                          :avg="getAvgTemp" />
-          <LineChartBlock title="Felt Air"
-                          color="#94BF41"
-                          :icon="snow"
-                          :chartData="getFeltAirChartData"
-                          :avg="getAvgFeltAir" />
-          <LineChartBlock title="Humidity"
-                          color="#F8B904"
-                          :icon="water"
-                          :chartData="getHumidityChartData"
-                          :avg="getAvgHumidity" />
-        </div>
-        <div class="row"
-             style="margin-top: 40px;">
-          <RainfallBlock :chartData="getRainfallData" />
-          <SunBlock :sunset="getSun.sunset" :sunrise="getSun.sunrise"/>
-        </div>
-      </div>
-      <div class="loading"
-           v-else>
-        <div class="lds-ripple">
-          <div></div>
-          <div></div>
-        </div>
-      </div>
-    </div>
-  </div>
+<template lang='pug'>
+#app
+  .main-container
+    .header
+      h1 COVID-19 CORONAVIRUS TRACKER
+    .title-detail
+      .title-icon.blue-border
+        .detail-icon
+          span.blue TOTAL CASES
+          p {{ infectionPeopleTotal.cases | comman }}
+        i.blue.fa.fa-users.fa-2x
+      .title-icon.red-border
+        .detail-icon
+          span.red TOTAL DEATHS
+          p {{ infectionPeopleTotal.deaths | comman }}
+        i.red.fa.fa-plus-square.fa-2x
+      .title-icon.green-border
+        .detail-icon
+          span.green TOTAL RECOVERD
+          p {{ infectionPeopleTotal.recovered | comman }}
+        i.green.fa.fa-child.fa-2x
+      .title-icon.yellow-border
+        .detail-icon
+          span.yellow NEW CASES
+          p {{ infectionPeopleTotal.todayCases | comman }}
+        i.yellow.fa.fa-exclamation-circle.fa-2x
+  .main-container(v-if="!loading")
+    h2 Top 10 Epidemic Country
+    barChart(:chartData="getTempChartData")
+  .main-container
+    h2 Confirmed Cases and Deaths by Country
+    .select-wrapper
+      ul.pagination(v-html='pagination' @click="switchPages")
+      select#optionchoice(@change='fliter(newItem)' v-model="newItem")
+        option(value="" selected="selected" ) ALL Country
+        option(v-for="item in zone" :value="item"  selected) {{item}}
+    table#country-detail.table.table-striped.table-bordered.table-hover
+      thead
+        tr
+          th(v-for="title in infectionDataTitle") {{title}}
+      tbody
+        tr(v-for="(value,index) in displayDataResult")
+          td
+            | {{ value.id }}
+          td.country-title
+            .icon
+              img(:src="value.flag")
+            | {{value.Country}}
+          td.importantnumber {{value.Cases | comman}}
+          td.yellow {{value.NewCases  | comman }}
+          td {{value.Deaths | comman}}
+          td.red {{value.NewDeaths | comman}}
+          td {{value.ActiveCases}}
+          td {{value.Critical}}
+          td.blue {{value.Recovered | comman}}
+
+
 </template>
 
 <script>
@@ -49,83 +64,67 @@ import moment from 'moment';
 import sum from 'lodash/sum';
 import 'vue-select/dist/vue-select.css';
 
-import RainfallBlock from './components/RainfallBlock';
-import SunBlock from './components/SunBlock';
-import LineChartBlock from './components/LineChartBlock';
+// import RainfallBlock from './components/RainfallBlock';
+// import SunBlock from './components/SunBlock';
+// import LineChartBlock from './components/LineChartBlock';
 import snow from './assets/snow.svg';
 import temp from './assets/temp.svg';
 import water from './assets/water.svg';
+import barChart from './components/BarChart';
+// 武漢病毒的呼叫
+// const { NovelCovid } = require('novelcovid');
+// const track = new NovelCovid();
 
 export default {
   name: 'app',
   components: {
-    RainfallBlock,
-    SunBlock,
-    LineChartBlock,
-    vSelect
+    vSelect,
+    barChart
   },
   data() {
     return {
-      snow,
-      temp,
-      water,
-      selected: '',
       cityData: [],
-      weatherData: {},
-      loading: true
+      infectionPeopleTotal: {},
+      infectionDataTitle:[
+        'Number',
+        'Country',
+        'Cases',
+        'New Cases',
+        'Deaths',
+        'New Deaths',
+        'Active Cases',
+        'Critical',
+        'Recovered'
+      ],
+      infectionCountryDataOri:[],
+      loading: true,
+      // 頁面樣式
+      newItem: '',
+      listData: [],
+      zone: [],
+      displayData: [],
+      displayDataResult: [],
+      totalPages: 0,
+      pageNum: 1,
+      contentNum: 20,
+      pageLeng: 0,
+      limitPage: 5,
+      pagination: ''
     };
   },
   computed: {
-    getRainfallData() {
-      const { histories } = this.weatherData;
-      if (!histories) return [];
-      return histories.map(item => ({
-        name: item.at.substring(11, 16),
-        value: item.rainfall
-      }));
-    },
     getTempChartData() {
-      const { histories } = this.weatherData;
-      return histories.map(item => ({
-        name: moment(item.at).format('mm:ss'),
-        value: item.temperature
-      }));
+      let result =  this.infectionCountryDataOri.filter((e,i)=>{
+        return i < 11;
+      });
+      
+      return result;
     },
-    getFeltAirChartData() {
-      const { histories } = this.weatherData;
-      return histories.map(item => ({
-        name: moment(item.at).format('mm:ss'),
-        value: item.felt_air_temp
-      }));
-    },
-    getHumidityChartData() {
-      const { histories } = this.weatherData;
-      return histories.map(item => ({
-        name: moment(item.at).format('mm:ss'),
-        value: item.humidity
-      }));
-    },
-    getAvgTemp() {
-      const { histories } = this.weatherData;
-      return (sum(histories.map(item => item.temperature)) / histories.length).toFixed(1);
-    },
-    getAvgFeltAir() {
-      const { histories } = this.weatherData;
-      return (sum(histories.map(item => item.felt_air_temp)) / histories.length).toFixed(1);
-    },
-    getAvgHumidity() {
-      const { histories } = this.weatherData;
-      return (sum(histories.map(item => item.humidity)) / histories.length).toFixed(1);
-    },
-    getSun() {
-      return {
-        sunset: this.weatherData.sunset,
-        sunrise: this.weatherData.sunrise
-      }
-    }
   },
   created() {
-    this.getCityData();
+    // this.getCityData();
+    this.getNovelCovid();
+    this.getAllCountryNovelCovid();
   },
   watch: {
     selected() {
@@ -133,42 +132,153 @@ export default {
     }
   },
   methods: {
-    getCityData() {
-      let proxy = `https://cors-anywhere.herokuapp.com/`
-      let url = `https://works.ioa.tw/weather/api/all.json`
-      axios
-        .get(`${proxy}${url}`)
-        .then(response => {
-          this.cityData = response.data.map(city => ({ label: `${city.name}, 台灣`, value: city.id }));
-          this.selected = this.cityData[0];
+    getNovelCovid() {
+      axios.get('https://corona.lmao.ninja/all')
+        .then((response) => {
+          this.infectionPeopleTotal = response.data;
+          // this.infectionPeopleTotal['recovered'] = data.recovered
+          // this.infectionPeopleTotal['deaths'] = data.deaths
+          // this.infectionPeopleTotal['cases'] = data.cases
         })
         .catch(error => {
           // eslint-disable-next-line
           console.error(error);
         });
     },
-    getWeatherData(id) {
-      this.loading = true;
-      let proxy = `https://cors-anywhere.herokuapp.com/`
-      let url = `https://works.ioa.tw/weather/api/weathers/${id}.json`
-      axios
-        .get(`${proxy}${url}`)
-        .then(response => {
+    getAllCountryNovelCovid() {
+      axios.get('https://corona.lmao.ninja/countries?sort=country')
+        .then((response) => {
+          let recentData = response.data;
+          recentData.map((value)=>{
+            this.infectionCountryDataOri.push(
+              {
+                'Country': value.country,
+                'flag': value.countryInfo.flag,
+                'Cases': value.cases,
+                'NewCases': value.todayCases,
+                'Deaths': value.deaths,
+                'NewDeaths': value.todayDeaths,
+                'ActiveCases': value.active,
+                'Critical': value.critical,
+                'Recovered': value.recovered
+              }
+            )
+          })
+        }).then(() =>{
+          this.infectionCountryDataOri.sort(function(a,b){
+            return a.Cases < b.Cases ? 1: -1;
+          })
+          this.infectionCountryDataOri.map((d,i)=>{
+            d['id'] = i+1
+          })
           this.loading = false;
-          this.weatherData = response.data;
+        }).then(()=>{
+          this.zoneChoice()
+          this.fliter(this.newItem)
         })
         .catch(error => {
-          this.loading = false;
           // eslint-disable-next-line
           console.error(error);
         });
+    },
+    zoneChoice: function () {
+      this.infectionCountryDataOri.forEach((item, key) => {
+        if (this.zone.indexOf(item.Country) === -1) {
+          this.zone.push(item.Country)
+        }
+      })
+    },
+    fliter: function (val) {
+      this.newItem = (val !== 'Country') ? val : ''
+      this.displayData = []
+      
+
+      this.infectionCountryDataOri.map((item) => {
+        if (item.Country === this.newItem.trim()) {
+          this.displayData.push(item)
+        };
+      })
+
+      if (this.newItem.trim() === '') {
+        this.displayData = this.infectionCountryDataOri
+      }
+      this.pageNum = 1
+      this.displayDistrice()
+    },
+    displayDistrice: function () {
+      let start = this.pageNum * this.contentNum
+      let newListData = []
+      let dataLen = this.displayData.length
+
+      // 頁數
+      this.calPageNumb(dataLen)
+      this.totalPages = dataLen
+
+      if (dataLen > start) {
+        dataLen = start
+      } else {
+        dataLen = this.displayData.length
+      }
+
+      for (let i = start - this.contentNum; i < dataLen; i++) {
+        newListData.push(this.displayData[i])
+      }
+
+      this.displayDataResult = newListData
+    },
+    calPageNumb: function (counter) {
+      let str = ''
+      if (counter > this.contentNum) {
+        this.pageLeng = Math.ceil(counter / this.contentNum)
+        const prev = `<li class="pagePrev"><a href="#">Prev</a></li>`
+        const next = `<li class="pageNext"><a href="#">Next</a></li>`
+        for (let i = 1; i <= this.pageLeng; i++) {
+          if (i === this.pageNum) {
+            str += `<li class="pageItem"><a class="pageLink active" href="#">${i}</a></li>`
+          } else {
+            str += `<li class="pageItem"><a class="pageLink" href="#">${i}</a></li>`
+          }
+        }
+        this.pagination = prev + str + next
+      } else {
+        str = `<li class="pageItem"><a class="pageLink active" href="#">1</a></li>`
+        this.pagination = str
+      }
+    },
+    switchPages: function (e) {
+      // 切換頁面
+      e.preventDefault()
+      if (e.target.nodeName !== 'A') {
+        return
+      }
+
+      // 切換頁碼
+      if (e.target.textContent === 'Next') {
+        if (this.pageNum === this.pageLeng) {
+          this.pageNum = this.pageLeng
+        } else {
+          this.pageNum++
+        }
+      } else if (e.target.textContent === 'Prev') {
+        if (this.pageNum === 1) {
+          this.pageNum = 1
+        } else {
+          this.pageNum--
+        }
+      } else {
+        this.pageNum = parseInt(e.target.textContent)
+      }
+      this.calPageNumb(this.totalPages)
+      // 更新資料
+      this.displayDistrice()
     }
   }
 };
 </script>
 
-<style>
+<style lang="scss">
 @import './css/reset.css';
+// @import './assets/scss/all.scss';
 
 #app {
   font-family: 'Lato', sans-serif;
@@ -177,8 +287,9 @@ export default {
 }
 
 .main-container {
-  width: 900px;
+  max-width: 900px;
   margin: 0 auto;
+  padding:10px;
   padding-top: 40px;
 }
 
